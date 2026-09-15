@@ -1,4 +1,4 @@
-# SpringBootDatabaseDemo
+# SpringBootDatabase
 
 A Spring Boot application that demonstrates database connectivity and CRUD operations using JPA and PostgreSQL. The project exposes REST endpoints for creating, reading, and listing employees.
 
