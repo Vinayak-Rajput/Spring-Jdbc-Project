@@ -2,14 +2,11 @@ package com.hdfc.controller;
 
 import java.util.List;
 
+import com.hdfc.dto.EmployeeRequestDto;
+import com.hdfc.service.EmployeeService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import com.hdfc.dto.EmployeeResponseDto;
 import com.hdfc.entity.Employee;
@@ -20,35 +17,49 @@ import com.hdfc.repository.EmployeeRepository;
 @RequestMapping("/employee")
 public class EmployeeController {
 
-	private EmployeeRepository empRepo;
+	private EmployeeService empService;
 	private EmployeeDtoMapper empMapper;
 
-	public EmployeeController(EmployeeRepository empRepo, EmployeeDtoMapper empMapper) {
+	public EmployeeController(EmployeeService empService, EmployeeDtoMapper empMapper) {
 		super();
-		this.empRepo = empRepo;
+		this.empService = empService;
 		this.empMapper = empMapper;
 	}
 	
 	@PostMapping
-	public ResponseEntity<EmployeeResponseDto> create(@RequestBody Employee emp){
-		return ResponseEntity.status(HttpStatus.OK)
-				.body(empMapper.toDto(empRepo.save(emp)));
+	public ResponseEntity<EmployeeResponseDto> create(@RequestBody EmployeeRequestDto emp){
+		return ResponseEntity.status(HttpStatus.CREATED)
+				.body(empMapper.toDto(empService.create(emp)));
 	}
 	
 	@GetMapping("/{empId}")
 	public ResponseEntity<EmployeeResponseDto> getEmployeeDetailsById(@PathVariable Integer empId){
 		return ResponseEntity.status(HttpStatus.OK)
-				.body(empMapper.toDto(empRepo.findById(empId).get()));
+				.body(empService.findById(empId));
 	}
 	
 	@GetMapping
 	public ResponseEntity<List<EmployeeResponseDto>> getAll(){
-		
-		List<Employee> employees = empRepo.findAll();
-		
-		List<EmployeeResponseDto> result = employees.stream().map(empMapper::toDto).toList();
-		
 		return ResponseEntity.status(HttpStatus.OK)
-				.body(result);
+				.body(empService.getAllEmployees());
 	}
+
+	@PutMapping("/{empId}")
+	public ResponseEntity<EmployeeResponseDto> update(@PathVariable Integer empId,@RequestBody EmployeeRequestDto emp){
+		return ResponseEntity.status(HttpStatus.OK)
+				.body(empService.updateEmployee(empId,emp));
+	}
+
+	@DeleteMapping("/{empId}")
+	public ResponseEntity<EmployeeResponseDto> delete(@PathVariable Integer empId){
+		return ResponseEntity.status(HttpStatus.NO_CONTENT)
+				.body(empService.deleteEmployee(empId));
+	}
+
+	@GetMapping("/count")
+	public ResponseEntity<Long> countAllEmployees(){
+		return ResponseEntity.status(HttpStatus.OK)
+				.body(empService.countAllEmployees());
+	}
+
 }
