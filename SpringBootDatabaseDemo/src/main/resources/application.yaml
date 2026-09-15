@@ -1,0 +1,9 @@
+spring:
+  application:
+    name: SpringBootDatabaseDemo
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/flywaydb
+    username: VINAYAK.R
+    password: 1234
+    driver-class-name: org.postgresql.Driver
