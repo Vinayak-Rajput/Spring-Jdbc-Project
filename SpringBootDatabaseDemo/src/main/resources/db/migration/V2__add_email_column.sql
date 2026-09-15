@@ -1,3 +1,0 @@
-ALTER TABLE employee 
-ADD COLUMN email VARCHAR(100) 
-NOT NULL;

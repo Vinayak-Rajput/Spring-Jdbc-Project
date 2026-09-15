@@ -1,5 +1,0 @@
-CREATE TABLE employee (
-	id SERIAL PRIMARY KEY,
-	name VARCHAR(100),
-	salary NUMERIC(10,2)
-);
