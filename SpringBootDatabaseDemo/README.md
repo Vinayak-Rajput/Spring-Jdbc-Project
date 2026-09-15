@@ -1,19 +1,19 @@
-# SpringBootDatabaseDemo
+# Spring Boot Database Demo
 
-A Spring Boot application that demonstrates database connectivity and CRUD operations using JPA and PostgreSQL. The project exposes REST endpoints for creating, reading, and listing employees.
+A Spring Boot employee-management REST API backed by PostgreSQL and Spring Data JPA. The project demonstrates entity persistence, DTO mapping, CRUD-style endpoints, centralized exception handling, and OpenAPI/Swagger documentation.
 
-## Overview
-
-This project is a simple employee management API built with:
+## Technology stack
 
 - Java 25
 - Spring Boot 4.1.1
-- Spring Data JPA
+- Spring Web MVC
+- Spring Data JPA and Hibernate
 - PostgreSQL
 - Maven
-- SpringDoc OpenAPI (Swagger UI)
+- Lombok
+- SpringDoc OpenAPI
 
-## Project Structure
+## Project structure
 
 ```text
 SpringBootDatabaseDemo/
@@ -21,18 +21,19 @@ SpringBootDatabaseDemo/
 │   ├── main/
 │   │   ├── java/com/hdfc/
 │   │   │   ├── SpringBootDatabaseDemoApplication.java
-│   │   │   ├── controller/
-│   │   │   │   └── EmployeeController.java
+│   │   │   ├── controller/EmployeeController.java
 │   │   │   ├── dto/
+│   │   │   │   ├── EmployeeRequestDto.java
 │   │   │   │   └── EmployeeResponseDto.java
-│   │   │   ├── entity/
-│   │   │   │   └── Employee.java
-│   │   │   ├── mapper/
-│   │   │   │   └── EmployeeDtoMapper.java
-│   │   │   └── repository/
-│   │   │       └── EmployeeRepository.java
-│   │   └── resources/
-│   │       └── application.yaml
+│   │   │   ├── entity/Employee.java
+│   │   │   ├── exception/
+│   │   │   │   ├── EmployeeAlreadyExistException.java
+│   │   │   │   ├── EmployeeNotFoundException.java
+│   │   │   │   └── GlobalExceptionHandler.java
+│   │   │   ├── mapper/EmployeeDtoMapper.java
+│   │   │   ├── repository/EmployeeRepository.java
+│   │   │   └── service/EmployeeService.java
+│   │   └── resources/application.yaml
 │   └── test/java/com/hdfc/
 │       └── SpringBootDatabaseDemoApplicationTests.java
 ├── pom.xml
@@ -42,64 +43,63 @@ SpringBootDatabaseDemo/
 └── README.md
 ```
 
-## Features
+## Data model
 
-- Create an employee record
-- Retrieve a single employee by ID
-- Retrieve all employees
-- Persist data in PostgreSQL via Hibernate/JPA
-- Auto-generated table creation using `ddl-auto: update`
+The `Employee` entity is stored in the `employee` table:
 
-## Database Configuration
+| Field | Type | Database mapping |
+| --- | --- | --- |
+| `empId` | `Integer` | Primary key, identity-generated |
+| `empName` | `String` | `emp_name` |
+| `email` | `String` | `emp_email`, unique and not null |
+| `address` | `String` | Default column name |
+| `salary` | `Double` | Default column name |
 
-The application is configured to connect to a local PostgreSQL database in `src/main/resources/application.yaml`:
+`EmployeeResponseDto` currently exposes only `empId` and `empName`. The request DTO accepts `empId`, `empName`, `email`, `address`, and `salary`.
+
+## Database configuration
+
+The application reads its PostgreSQL settings from `src/main/resources/application.yaml`:
 
 ```yaml
 spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/employeemanagementdb
-    username: VINAYAK.R
-    password: 1234
+    username: <postgres-username>
+    password: <postgres-password>
     driver-class-name: org.postgresql.Driver
-
   jpa:
     hibernate:
       ddl-auto: update
     show-sql: true
 ```
 
-Before running the app, make sure PostgreSQL is installed and a database named `employeemanagementdb` exists. You can update the database credentials in this file if needed.
+Create the `employeemanagementdb` database and provide valid local credentials before starting the application. `ddl-auto: update` allows Hibernate to update the schema from the entity model; use a migration strategy instead for production deployments.
 
-## Entity Model
+## REST API
 
-The `Employee` entity contains:
-
-- `empId`
-- `empName`
-- `email`
-- `address`
-- `salary`
-
-The table name is mapped to `employee`, and the email field is marked as unique and non-null.
-
-## REST API Endpoints
+The base path is `/employee`. The application runs on port `8080` by default.
 
 ### Create an employee
 
-- Method: `POST`
-- URL: `/employee`
-- Request body:
+```http
+POST /employee
+Content-Type: application/json
+```
+
+Request:
 
 ```json
 {
+  "empId": 1,
   "empName": "John",
   "email": "john@example.com",
   "address": "Hyderabad",
-  "salary": 50000.00
+  "salary": 50000.0
 }
 ```
 
-Response:
+Successful response: `201 Created`
 
 ```json
 {
@@ -108,55 +108,116 @@ Response:
 }
 ```
 
-### Get employee by ID
+### Get an employee by ID
 
-- Method: `GET`
-- URL: `/employee/{empId}`
+```http
+GET /employee/{empId}
+```
+
+Successful response: `200 OK`
 
 ### Get all employees
 
-- Method: `GET`
-- URL: `/employee`
+```http
+GET /employee
+```
 
-## Running the Application
+Successful response: `200 OK`
 
-From the project root (`SpringBootDatabaseDemo`), run:
+```json
+[
+  {
+    "empId": 1,
+    "empName": "John"
+  }
+]
+```
+
+### Update an employee
+
+```http
+PUT /employee/{empId}
+Content-Type: application/json
+```
+
+The request body uses the same fields as employee creation. The controller is defined to return `200 OK` with an `EmployeeResponseDto`.
+
+### Delete an employee
+
+```http
+DELETE /employee/{empId}
+```
+
+The controller is defined to return `204 No Content`.
+
+### Count employees
+
+```http
+GET /employee/count
+```
+
+Successful response: `200 OK` with the employee count as a number.
+
+## Error handling
+
+`GlobalExceptionHandler` maps application exceptions to these responses:
+
+| Condition | HTTP status | Response fields |
+| --- | --- | --- |
+| Duplicate employee ID | `409 Conflict` | `Status`, `Message` |
+| Employee does not exist | `404 Not Found` | `Status`, `Message` |
+| Unsupported HTTP method | `405 Method Not Allowed` | `Status`, `Message` |
+| Unhandled exception | `500 Internal Server Error` | Exception message |
+
+Example:
+
+```json
+{
+  "Status": 404,
+  "Message": "Employee with ID 10 does not exist."
+}
+```
+
+## OpenAPI and Swagger UI
+
+SpringDoc is included in the Maven dependencies. When the application is running, Swagger UI is available at:
+
+```text
+http://localhost:8080/swagger-ui/index.html
+```
+
+The generated OpenAPI document is available at:
+
+```text
+http://localhost:8080/v3/api-docs
+```
+
+## Running the application
+
+From the project directory:
 
 ```bash
 ./mvnw spring-boot:run
 ```
 
-Or, on Windows:
+On Windows:
 
-```bash
+```bat
 mvnw.cmd spring-boot:run
 ```
 
-The application will start on the default Spring Boot port:
-
-```text
-http://localhost:8080
-```
-
-## Building and Testing
-
-To compile the project:
+## Building and testing
 
 ```bash
 ./mvnw clean package
-```
-
-To run the test suite:
-
-```bash
 ./mvnw test
 ```
 
-## Notes
+The test suite currently includes a Spring application-context smoke test.
 
-- The project includes SpringDoc OpenAPI support for Swagger UI.
-- The `EmployeeDtoMapper` converts the entity into a response DTO that includes only selected fields.
-- This is a benchmark-style example for learning Spring Boot, JPA, and PostgreSQL integration.
+## Current implementation note
+
+The `updateEmployee` and `deleteEmployee` service methods perform their repository operation when the employee exists, but then continue to throw `EmployeeNotFoundException` because they do not return a successful result from that branch. The endpoint contracts above reflect the controller declarations; these methods should be corrected before relying on update or delete requests in a running application.
 
 ## License
 
